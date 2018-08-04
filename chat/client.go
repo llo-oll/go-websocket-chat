@@ -8,10 +8,10 @@ import (
 type client struct {
 	chanIn  <-chan string
 	chanOut chan<- string
-	conn    websocket.Conn
+	conn    *websocket.Conn
 }
 
-func activateClient(chanOut chan<- string, conn websocket.Conn) chan string {
+func activateClient(chanOut chan<- string, conn *websocket.Conn) chan string {
 	//TODO buffer size is a guess. Change that.
 	chanIn := make(chan string, 100)
 	newClient := client{chanIn, chanOut, conn}
@@ -26,8 +26,9 @@ func (thisClient *client) run() {
 
 //TODO rename all these "in" and "out"s they are very confusing: chanIn chanOut listenIn/Out
 func (thisClient *client) listenIn() {
+	log.Println("Client is listening for incoming messages")
 	for msg := range thisClient.chanIn {
-		log.Println("Client is listening for incoming messages")
+		log.Println("Client has received a message")
 		err := thisClient.conn.WriteMessage(websocket.TextMessage, []byte(msg))
 		if err != nil {
 			log.Println(err)
@@ -38,9 +39,10 @@ func (thisClient *client) listenIn() {
 }
 
 func (thisClient *client) listenOut() {
+	log.Println("Client is waiting to send messages")
 	for {
-		log.Println("Client is listening to its own messages")
 		msgType, bytes, err := thisClient.conn.ReadMessage()
+		log.Println("Client has sent a message")
 		if err != nil {
 			log.Println(err)
 			//TODO destroy the client rather than simply return

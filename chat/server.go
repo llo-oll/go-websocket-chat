@@ -34,9 +34,9 @@ func connectClient(writer http.ResponseWriter, request *http.Request) {
 		log.Println(err)
 		return
 	}
+	chatHub.addConnection(conn)
 
 }
-
 func servePage(writer http.ResponseWriter, request *http.Request) {
 	http.ServeFile(writer, request, "chat/client.html")
 }

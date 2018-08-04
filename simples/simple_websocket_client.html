@@ -8,7 +8,7 @@
     <script type="text/javascript">
 
         window.onload = function () {
-            const recievedText = document.getElementById("recievedText");
+            const recievedText = document.getElementById("receivedText");
             const sendTextArea = document.getElementById("sendTextArea");
             sendTextArea.value = "";
             if (window["WebSocket"]) {
@@ -49,7 +49,7 @@
             text-align: center;
         }
 
-        #recievedText {
+        #receivedText {
             color: white;
             background-color: darkgray;
             height: 300px;
@@ -71,7 +71,7 @@
 
 <body>
 <h1>Websocket Chat Client</h1>
-<p id="recievedText"></p>
+<p id="receivedText"></p>
 <textarea id="sendTextArea"></textarea>
 </body>
 </html>
