@@ -11,8 +11,8 @@ import (
 
 var upgrader = websocket.Upgrader{
 	HandshakeTimeout:  0,
-	ReadBufferSize:    1024,
-	WriteBufferSize:   1024,
+	ReadBufferSize:    1,
+	WriteBufferSize:   1,
 	Subprotocols:      nil,
 	Error:             nil,
 	CheckOrigin:       nil,
@@ -55,10 +55,6 @@ func connectWebSocket(writer http.ResponseWriter, request *http.Request) {
 }
 
 func servePage(writer http.ResponseWriter, request *http.Request) {
-	if request.URL.Path != "/" {
-		http.Error(writer, "Not Found", http.StatusNotFound)
-		return
-	}
 	http.ServeFile(writer, request, "simples/simple_websocket_client.html")
 }
 
