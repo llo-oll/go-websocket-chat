@@ -6,17 +6,18 @@ import (
 	"net/http"
 )
 
+//This is the hub which connects all the chat clients together, and coordinates the passing around of messages.
 var chatHub = newHub()
 
-/**
-Sets up a server providing a web based chat client on "/"
-*/
+//main sets up a server providing a web based chat client on "/"
 func main() {
 	http.HandleFunc("/", servePage)
 	http.HandleFunc("/ws", connectClient)
 	http.ListenAndServe(":5000", nil)
 }
 
+//connectClient is an http request handler which upgrades the connection to a websocket and adds the connection to
+//the chat hub.
 func connectClient(writer http.ResponseWriter, request *http.Request) {
 	//upgrade connection
 	var upgrader = websocket.Upgrader{
@@ -37,6 +38,8 @@ func connectClient(writer http.ResponseWriter, request *http.Request) {
 	chatHub.addConnection(conn)
 
 }
+
+//servePage is an http request handler which serves the webchat web page to a client.
 func servePage(writer http.ResponseWriter, request *http.Request) {
 	http.ServeFile(writer, request, "chat/client.html")
 }

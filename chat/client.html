@@ -14,9 +14,25 @@
             const conn = new WebSocket("ws://" + document.location.host + "/ws");
 
             conn.onmessage = function (event) {
-                newMessage = document.createElement("p");
+                const newMessage = document.createElement("p");
                 newMessage.textContent = event.data;
                 receivedText.appendChild(newMessage);
+            };
+
+            conn.onopen = function  (event) {
+                console.log("on open");
+                const dissMsg = document.getElementById("disconnectedMessage");
+                dissMsg.classList.add("currentHiddenMessage");
+                const connMsg = document.getElementById("connectedMessage");
+                connMsg.classList.remove("currentHiddenMessage");
+
+            };
+
+            conn.onclose = function (event) {
+                const dissMsg = document.getElementById("disconnectedMessage");
+                dissMsg.classList.remove("currentHiddenMessage");
+                const connMsg = document.getElementById("connectedMessage");
+                connMsg.classList.add("currentHiddenMessage");
             };
 
             sendTextArea.onkeyup = function (event) {
@@ -27,7 +43,6 @@
                 }
             };
         }
-
     };
 
 </script>
@@ -42,21 +57,23 @@
         font-family: sans-serif;
         padding-left: 50px;
         padding-top: 10px;
+        background-color: seagreen;
     }
 
     h1  {
-        color: saddlebrown;
+        color: white;
         width: 500px;
         text-align: center;
     }
 
     #receivedText {
-        color: white;
-        background-color: darkgray;
+        color: seagreen;
+        background-color: white;
         height: 300px;
         width: 500px;
         padding: 10px;
         border-radius: 5px;
+        margin-bottom: 10px;
     }
 
     #sendTextArea {
@@ -64,6 +81,30 @@
         height: 100px;
         border-radius: 10px;
         padding: 10px;
+        border: none;
+        background-color: white;
+    }
+
+    #connectionStatus {
+        width: 250px;
+        height: 35px;
+        border-radius: 5px;
+        background-color: white;
+        margin-bottom: 10px;
+        font-size: 20px;
+        text-align: center;
+        padding:5px;
+    }
+    #disconnectedMessage {
+        color: indianred;
+    }
+
+    #connectedMessage {
+        color: seagreen;
+    }
+
+    .currentHiddenMessage {
+        display: none;
     }
 
 </style>
@@ -73,6 +114,7 @@
 <body>
 
     <h1>Websocket Chat Client</h1>
+    <div id="connectionStatus"><span id="disconnectedMessage">Disconnected</span><span id="connectedMessage" class="currentHiddenMessage">Connected</span></div>
     <div id="receivedText"></div>
     <textarea id="sendTextArea"></textarea>
 
