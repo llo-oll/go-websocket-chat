@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 )
@@ -17,29 +18,30 @@ type being private.
 */
 
 func newHub() *hub {
-	log.Println("Constructing new hub")
 	newHub := &hub{msgChan: make(chan string), clientChanMap: make(map[int]chan string)}
+	newHub.log("Constructing new hub")
 	go newHub.listen()
 	return newHub
 }
 
 func (thisHub *hub) addConnection(conn *websocket.Conn) {
-	log.Println("Adding connection to hub")
+	thisHub.log("Received new connection")
+	thisHub.log("Creating new client")
 	newChan := activateClient(thisHub.msgChan, conn, thisHub.nextClientId)
 	thisHub.clientChanMap[thisHub.nextClientId] = newChan
 	thisHub.nextClientId++
 }
 
 func (thisHub *hub) listen() {
-	log.Println("Hub is listening for client messages")
+	thisHub.log("Listening for client messages")
 	for msg := range thisHub.msgChan {
 		for id, ch := range thisHub.clientChanMap {
-			select {
-			case ch <- msg:
-			default:
-				log.Println("Removing client ", id, " from hub")
-				delete(thisHub.clientChanMap, id)
-			}
+			thisHub.log(fmt.Sprintf("Sending message to client %d", id))
+			ch <- msg
 		}
 	}
+}
+
+func (thisHub *hub) log(entry interface{}) {
+	log.Printf("Hub:\t\t%s", entry)
 }

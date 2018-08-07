@@ -41,40 +41,44 @@ func (thisClient *client) run() {
 	go thisClient.msgSendRoutine()
 }
 
-//msgReceiveRoutine waits for incoming messages and then sends them over the WebSocket.
+//msgReceiveRoutine waits for incoming messages from the hub and then sends them over the WebSocket.
 func (thisClient *client) msgReceiveRoutine() {
-	log.Println("Client", thisClient.id, "\b: listening for incoming messages")
+	thisClient.log("Listening for incoming messages")
 	for msg := range thisClient.receiveChan {
-		log.Println("Client", thisClient.id, "\b: received a message")
+		thisClient.log("Received a message")
 		err := thisClient.conn.WriteMessage(websocket.TextMessage, []byte(msg))
 		if err != nil {
-			log.Println(err)
-			log.Println("Client", thisClient.id, "\b: Failed to write to WebSocket")
-			log.Println("Client", thisClient.id, "\b: messageReceiveRoutine is closing down")
+			thisClient.log(err)
+			thisClient.log("Failed to write to WebSocket")
+			thisClient.log("Closing WebSocket")
 			thisClient.conn.Close()
 			break
 		}
 	}
-	log.Println("Client", thisClient.id, "\b: is exiting msgReceiveRoutine")
+	thisClient.log("Exiting msgReceiveRoutine")
 }
 
 //msgSendRoutine waits for messages coming over the WebSocket and then sends them over the send channel,
 // to be picked up by the hub.
 func (thisClient *client) msgSendRoutine() {
-	log.Println("Client", thisClient.id, "\b: is waiting to send messages")
+	thisClient.log("Waiting to send messages")
 	for {
 		msgType, bytes, err := thisClient.conn.ReadMessage()
-		log.Println("Client", thisClient.id, "\b: sent a message")
 		if err != nil {
-			log.Println(err)
-			log.Println("Client", thisClient.id, "\b: is closing down")
-			close(thisClient.receiveChan)
+			thisClient.log(err)
+			thisClient.log("Closing WebSocket")
+			thisClient.conn.Close()
 			break
 		} else if msgType != websocket.TextMessage {
-			log.Println("Client", thisClient.id, "\b: received non-text message through socket")
+			thisClient.log("Received non-text message through socket")
 		} else {
+			thisClient.log("Sending message")
 			thisClient.sendChan <- string(bytes)
 		}
 	}
-	log.Println("Client", thisClient.id, "\b: is exiting msgSendRoutine")
+	thisClient.log("Exiting msgSendRoutine")
+}
+
+func (thisClient *client) log(entry interface{}) {
+	log.Printf("Client %d:\t%s", thisClient.id, entry)
 }
