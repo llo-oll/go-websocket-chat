@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gorilla/websocket"
 	"log"
+	"sync"
 )
 
 //type client is the applications representation of a chat client.
@@ -11,29 +12,55 @@ import (
 //
 //A client communicates to the rest of the application over two channels.
 //
+//receiveChan is used by the rest of the application to send messages to the client. These are forwarded over the
+//WebSocket. It is unique to this client.
+//
 //sendChan is used to send messages which have been received over the WebSocket to the rest of the application.
 //It is shared by all clients.
 //
-//receiveChan is used by the rest of the application to send messages to the client. These are forwarded over the
-//WebSocket. It is unique to this client.
+//deathChan is used to inform the hub that this client has died by sending id over the channel.
+//deathChan is shared by all clients
 //
 //Clients should be created using the activateClient function.
 //This runs two goroutines: msgReceiveRoutine and msgSendRoutine,
 //which are responsible for dealing with communication over receiveChan and sendChan.
 type client struct {
-	receiveChan chan string
-	sendChan    chan string
-	conn        *websocket.Conn
 	id          int
+	conn        *websocket.Conn
+	receiveChan <-chan string
+	sendChan    chan<- string
+	deathChan   chan<- int
+}
+
+var clientId struct {
+	nextId  int
+	idMutex sync.Mutex
 }
 
 //activateClient creates a client.
-func activateClient(sendChan chan string, conn *websocket.Conn, id int) chan string {
+//
+//conn should be a connection to the html client.
+//
+//sendChan should be the channel on which to send chat messages to the hub
+//
+//deathChan allows the client to inform the hub that it has died and should be forgotten about.
+//
+//Returns the id of the new client and a channel over which chat messages can be sent to the client.
+func activateClient(conn *websocket.Conn, sendChan chan string, deathChan chan int) (clientId int, clientChannel chan<- string) {
 	//TODO buffer size is a guess. Change that.
 	receiveChan := make(chan string, 100)
-	newClient := client{receiveChan, sendChan, conn, id}
+	id := nextId()
+	newClient := client{id, conn, receiveChan, sendChan, deathChan}
 	newClient.run()
-	return receiveChan
+	return id, receiveChan
+}
+
+func nextId() int {
+	clientId.idMutex.Lock()
+	id := clientId.nextId
+	clientId.nextId++
+	clientId.idMutex.Unlock()
+	return id
 }
 
 func (thisClient *client) run() {

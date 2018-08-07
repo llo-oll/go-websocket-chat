@@ -8,8 +8,8 @@ import (
 
 type hub struct {
 	msgChan       chan string
-	clientChanMap map[int]chan string
-	nextClientId  int
+	clientChanMap map[int]chan<- string
+	deathChan     chan int
 }
 
 /*TODO maybe refactor hub and client into a separate package and turn this into
@@ -18,7 +18,7 @@ type being private.
 */
 
 func newHub() *hub {
-	newHub := &hub{msgChan: make(chan string), clientChanMap: make(map[int]chan string)}
+	newHub := &hub{msgChan: make(chan string), clientChanMap: make(map[int]chan<- string)}
 	newHub.log("Constructing new hub")
 	go newHub.listen()
 	return newHub
@@ -27,9 +27,8 @@ func newHub() *hub {
 func (thisHub *hub) addConnection(conn *websocket.Conn) {
 	thisHub.log("Received new connection")
 	thisHub.log("Creating new client")
-	newChan := activateClient(thisHub.msgChan, conn, thisHub.nextClientId)
-	thisHub.clientChanMap[thisHub.nextClientId] = newChan
-	thisHub.nextClientId++
+	clientId, clientChan := activateClient(conn, thisHub.msgChan, thisHub.deathChan)
+	thisHub.clientChanMap[clientId] = clientChan
 }
 
 func (thisHub *hub) listen() {
