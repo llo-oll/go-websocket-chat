@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/gorilla/websocket"
 	"log"
-	"sync"
 )
 
 //type client is the applications representation of a chat client.
@@ -21,7 +20,7 @@ import (
 //deathChan is used to inform the hub that this client has died by sending id over the channel.
 //deathChan is shared by all clients
 //
-//Clients should be created using the activateClient function.
+//Clients should be created using the newClient function.
 //This runs two goroutines: msgReceiveRoutine and msgSendRoutine,
 //which are responsible for dealing with communication over receiveChan and sendChan.
 type client struct {
@@ -29,38 +28,33 @@ type client struct {
 	conn        *websocket.Conn
 	receiveChan <-chan string
 	sendChan    chan<- string
-	deathChan   chan<- int
 }
 
-var clientId struct {
-	nextId  int
-	idMutex sync.Mutex
-}
+//This channel provides unique ids for clients (0,1,...)
+var idChan = func() <-chan int {
+	ch := make(chan int)
+	id := 0
+	go func() {
+		for {
+			ch <- id
+			id++
+		}
+	}()
+	return ch
+}()
 
-//activateClient creates a client.
+//newClient creates a client.
 //
-//conn should be a connection to the html client.
+//conn should be a WebSocket connection to the html client.
 //
-//sendChan should be the channel on which to send chat messages to the hub
-//
-//deathChan allows the client to inform the hub that it has died and should be forgotten about.
-//
-//Returns the id of the new client and a channel over which chat messages can be sent to the client.
-func activateClient(conn *websocket.Conn, sendChan chan string, deathChan chan int) (clientId int, clientChannel chan<- string) {
-	//TODO buffer size is a guess. Change that.
-	receiveChan := make(chan string, 100)
-	id := nextId()
-	newClient := client{id, conn, receiveChan, sendChan, deathChan}
+//Returns the id of the new client and channels for sending and receiving messages.
+func newClient(conn *websocket.Conn) (clientId int, toClient chan<- string, fromClient <-chan string) {
+	receiveChan := make(chan string)
+	sendChan := make(chan string)
+	id := <-idChan
+	newClient := client{id, conn, receiveChan, sendChan}
 	newClient.run()
-	return id, receiveChan
-}
-
-func nextId() int {
-	clientId.idMutex.Lock()
-	id := clientId.nextId
-	clientId.nextId++
-	clientId.idMutex.Unlock()
-	return id
+	return id, receiveChan, sendChan
 }
 
 func (thisClient *client) run() {
@@ -77,12 +71,11 @@ func (thisClient *client) msgReceiveRoutine() {
 		if err != nil {
 			thisClient.log(err)
 			thisClient.log("Failed to write to WebSocket")
-			thisClient.log("Closing WebSocket")
-			thisClient.conn.Close()
 			break
 		}
 	}
-	thisClient.log("Exiting msgReceiveRoutine")
+	thisClient.log("Stopped listening for messages")
+	thisClient.Close()
 }
 
 //msgSendRoutine waits for messages coming over the WebSocket and then sends them over the send channel,
@@ -93,8 +86,6 @@ func (thisClient *client) msgSendRoutine() {
 		msgType, bytes, err := thisClient.conn.ReadMessage()
 		if err != nil {
 			thisClient.log(err)
-			thisClient.log("Closing WebSocket")
-			thisClient.conn.Close()
 			break
 		} else if msgType != websocket.TextMessage {
 			thisClient.log("Received non-text message through socket")
@@ -103,7 +94,15 @@ func (thisClient *client) msgSendRoutine() {
 			thisClient.sendChan <- string(bytes)
 		}
 	}
-	thisClient.log("Exiting msgSendRoutine")
+	thisClient.log("Stopped sending messages")
+	thisClient.log("Closing send channel")
+	close(thisClient.sendChan)
+	thisClient.Close()
+}
+
+func (thisClient *client) Close() {
+	thisClient.log("Closing WebSocket")
+	thisClient.conn.Close()
 }
 
 func (thisClient *client) log(entry interface{}) {

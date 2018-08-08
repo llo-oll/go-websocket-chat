@@ -9,13 +9,9 @@ import (
 type hub struct {
 	msgChan       chan string
 	clientChanMap map[int]chan<- string
-	deathChan     chan int
 }
 
-/*TODO maybe refactor hub and client into a separate package and turn this into
-a public function. This will force the use of this constructor due to the "hub"
-type being private.
-*/
+//TODO maybe refactor hub and client into a separate package and turn this into a public function. This will force the use of this constructor due to the "hub" type being private.
 
 func newHub() *hub {
 	newHub := &hub{msgChan: make(chan string), clientChanMap: make(map[int]chan<- string)}
@@ -27,8 +23,16 @@ func newHub() *hub {
 func (thisHub *hub) addConnection(conn *websocket.Conn) {
 	thisHub.log("Received new connection")
 	thisHub.log("Creating new client")
-	clientId, clientChan := activateClient(conn, thisHub.msgChan, thisHub.deathChan)
-	thisHub.clientChanMap[clientId] = clientChan
+	clientId, toClient, fromClient := newClient(conn)
+	thisHub.clientChanMap[clientId] = toClient
+	go func() {
+		for msg := range fromClient {
+			thisHub.msgChan <- fmt.Sprintf("Client %d: %s", clientId, msg)
+		}
+		thisHub.log(fmt.Sprint("Removing Client", clientId))
+		close(thisHub.clientChanMap[clientId])
+		delete(thisHub.clientChanMap, clientId)
+	}()
 }
 
 func (thisHub *hub) listen() {
