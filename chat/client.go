@@ -9,16 +9,11 @@ import (
 //It is connected to the clients web page by a WebSocket and provides the interface between the socket and the
 //application.
 //
-//A client communicates to the rest of the application over two channels.
+//A client communicates to the rest of the application over two channels:
 //
-//receiveChan is used by the rest of the application to send messages to the client. These are forwarded over the
-//WebSocket. It is unique to this client.
+//receiveChan is used by the rest of the application to send messages to the client. These are then forwarded over the WebSocket.
 //
 //sendChan is used to send messages which have been received over the WebSocket to the rest of the application.
-//It is shared by all clients.
-//
-//deathChan is used to inform the hub that this client has died by sending id over the channel.
-//deathChan is shared by all clients
 //
 //Clients should be created using the newClient function.
 //This runs two goroutines: msgReceiveRoutine and msgSendRoutine,

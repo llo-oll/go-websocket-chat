@@ -7,41 +7,47 @@
 <script type="text/javascript">
 
     window.onload = function () {
-        const receivedText = document.getElementById("receivedText");
+        const receivedText = document.getElementById("receivedMessages");
         const sendTextArea = document.getElementById("sendTextArea");
         sendTextArea.value = "";
         if (window["WebSocket"]) {
             const conn = new WebSocket("ws://" + document.location.host + "/ws");
 
-            conn.onmessage = function (event) {
-                const newMessage = document.createElement("p");
+            conn.onmessage = event => {
+                const newMessage = document.createElement("div");
+                newMessage.classList.add("message");
                 newMessage.textContent = event.data;
                 receivedText.appendChild(newMessage);
+                scrollToBottom();
             };
 
-            conn.onopen = function  (event) {
-                console.log("on open");
-                const dissMsg = document.getElementById("disconnectedMessage");
-                dissMsg.classList.add("currentHiddenMessage");
-                const connMsg = document.getElementById("connectedMessage");
-                connMsg.classList.remove("currentHiddenMessage");
+            conn.onopen = () => {
+                const dissMsg = document.getElementById("disconnected");
+                dissMsg.classList.add("currentHiddenStatus");
+                const connMsg = document.getElementById("connected");
+                connMsg.classList.remove("currentHiddenStatus");
 
             };
 
-            conn.onclose = function (event) {
-                const dissMsg = document.getElementById("disconnectedMessage");
-                dissMsg.classList.remove("currentHiddenMessage");
-                const connMsg = document.getElementById("connectedMessage");
-                connMsg.classList.add("currentHiddenMessage");
+            conn.onclose = () => {
+                const disMsg = document.getElementById("disconnected");
+                disMsg.classList.remove("currentHiddenStatus");
+                const conMsg = document.getElementById("connected");
+                conMsg.classList.add("currentHiddenStatus");
             };
 
-            sendTextArea.onkeyup = function (event) {
+            sendTextArea.onkeyup = event => {
                 if (event.key === "Enter") {
                     //TODO Does this throw an error sometimes?
                     conn.send(sendTextArea.value);
                     sendTextArea.value = "";
                 }
             };
+
+            function scrollToBottom() {
+                const receivedMsgs = document.getElementById("receivedMessages");
+                receivedMsgs.scrollTo(0, receivedMsgs.scrollHeight);
+            }
         }
     };
 
@@ -66,14 +72,15 @@
         text-align: center;
     }
 
-    #receivedText {
-        color: seagreen;
+    #receivedMessages {
+        color: slategray;
         background-color: white;
         height: 300px;
         width: 500px;
         padding: 10px;
         border-radius: 10px;
         margin-bottom: 15px;
+        overflow: auto;
     }
 
     #sendTextArea {
@@ -95,16 +102,23 @@
         text-align: center;
         padding:8px;
     }
-    #disconnectedMessage {
+    #disconnected {
         color: indianred;
     }
 
-    #connectedMessage {
+    #connected {
         color: seagreen;
     }
 
-    .currentHiddenMessage {
+    .currentHiddenStatus {
         display: none;
+    }
+    
+    .message {
+        padding: 10px;
+        /*border: 1px solid seagreen;*/
+        border-radius: 10px;
+        margin-bottom: 5px;
     }
 
 </style>
@@ -114,9 +128,9 @@
 <body>
 
     <h1>Websocket Chat Client</h1>
-    <div id="connectionStatus"><span id="disconnectedMessage">Disconnected</span><span id="connectedMessage" class="currentHiddenMessage">Connected</span></div>
-    <div id="receivedText"></div>
-    <textarea id="sendTextArea"></textarea>
+    <div id="connectionStatus"><span id="disconnected">Disconnected</span><span id="connected" class="currentHiddenStatus">Connected</span></div>
+    <div id="receivedMessages"></div>
+    <textarea id="sendTextArea" autofocus></textarea>
 
 </body>
 </html>
