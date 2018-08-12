@@ -5,6 +5,7 @@ import (
 	"log"
 )
 
+//TODO I don't like the fact that this is called client! Maybe Connection or client connection or something like that.
 //type client is the applications representation of a chat client.
 //It is connected to the clients web page by a WebSocket and provides the interface between the socket and the
 //application.
