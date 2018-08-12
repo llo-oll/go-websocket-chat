@@ -35,6 +35,9 @@ func (thisHub *hub) addConnection(conn *websocket.Conn) {
 		thisHub.log(fmt.Sprint("Removing Client", clientId))
 		close(thisHub.clientChanMap[clientId])
 		delete(thisHub.clientChanMap, clientId)
+		//removes the client from nameMap
+		thisHub.nameMap.changeName(clientId, "")
+		thisHub.log(fmt.Sprintf("%s", thisHub.nameMap))
 	}()
 }
 
@@ -69,6 +72,8 @@ func newUsernameMap() usernameMap {
 
 //changeName changes the username of the client if the new name isn't already in use.
 //returns true if successful, false otherwise.
+//Changing a name to the empty string removes the entry from the map.
+//
 func (nameMap *usernameMap) changeName(clientId int, name string) bool {
 	nameMap.mutex.Lock()
 	defer nameMap.mutex.Unlock()
@@ -80,8 +85,12 @@ func (nameMap *usernameMap) changeName(clientId int, name string) bool {
 	oldName := nameMap.id2NameMap[clientId]
 	delete(nameMap.nameSet, oldName)
 
-	nameMap.id2NameMap[clientId] = name
-	nameMap.nameSet[name] = true
+	if name == "" {
+		delete(nameMap.id2NameMap, clientId)
+	} else {
+		nameMap.id2NameMap[clientId] = name
+		nameMap.nameSet[name] = true
+	}
 
 	return true
 }
