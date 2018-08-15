@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
+	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -27,9 +29,14 @@ func (thisHub *hub) addConnection(conn *websocket.Conn) {
 	thisHub.log("Creating new client")
 	clientId, toClient, fromClient := newClient(conn)
 	thisHub.clientChanMap[clientId] = toClient
-	thisHub.nameMap.changeName(clientId, fmt.Sprintf("User %d", clientId))
+	thisHub.nameMap.changeName(clientId, fmt.Sprintf("User%d", clientId))
 	go func() {
 		for msg := range fromClient {
+			if string(msg[0]) == "/" {
+				thisHub.log(fmt.Sprintf("Client %d has run a command", clientId))
+				thisHub.run_command(clientId, string(msg[1:]))
+				continue
+			}
 			thisHub.msgChan <- fmt.Sprintf("%s: %s", thisHub.nameMap.getName(clientId), msg)
 		}
 		thisHub.log(fmt.Sprint("Removing Client", clientId))
@@ -52,21 +59,30 @@ func (thisHub *hub) listenAndSend() {
 	}
 }
 
+func (thisHub *hub) run_command(clientId int, s string) {
+	if match, _ := regexp.MatchString("^name", s); match {
+		newName := string(s[4:])
+		thisHub.nameMap.changeName(clientId, newName)
+	}
+}
+
 func (thisHub *hub) log(entry interface{}) {
 	log.Printf("Hub:\t\t%s", entry)
 }
 
 //TODO remove closed connections from usernameMap
 type usernameMap struct {
-	mutex      sync.Mutex
-	id2NameMap map[int]string
-	nameSet    map[string]bool
+	mutex         sync.Mutex
+	id2NameMap    map[int]string
+	nameSet       map[string]bool
+	maxNameLength int
 }
 
 func newUsernameMap() usernameMap {
 	var nameMap usernameMap
 	nameMap.id2NameMap = make(map[int]string)
 	nameMap.nameSet = make(map[string]bool)
+	nameMap.maxNameLength = 20
 	return nameMap
 }
 
@@ -77,6 +93,16 @@ func newUsernameMap() usernameMap {
 func (nameMap *usernameMap) changeName(clientId int, name string) bool {
 	nameMap.mutex.Lock()
 	defer nameMap.mutex.Unlock()
+
+	name = strings.TrimSpace(name)
+	nameEnd := strings.Index(name, " ")
+	if nameEnd > 0 {
+		name = name[:nameEnd]
+	}
+
+	if len(name) > nameMap.maxNameLength {
+		name = string(name[:nameMap.maxNameLength])
+	}
 
 	if nameMap.nameSet[name] {
 		return false
