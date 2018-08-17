@@ -10,15 +10,15 @@ import (
 )
 
 type hub struct {
-	msgChan       chan string
-	clientChanMap map[int]chan<- string
+	msgChan       chan map[string]string
+	clientChanMap map[int]chan<- map[string]string
 	nameMap       usernameMap
 }
 
 //TODO maybe refactor hub and client into a separate package and turn this into a public function. This will force the use of this constructor due to the "hub" type being private.
 
 func newHub() *hub {
-	newHub := &hub{msgChan: make(chan string), clientChanMap: make(map[int]chan<- string), nameMap: newUsernameMap()}
+	newHub := &hub{msgChan: make(chan map[string]string), clientChanMap: make(map[int]chan<- map[string]string), nameMap: newUsernameMap()}
 	newHub.log("Constructing new hub")
 	go newHub.listenAndSend()
 	return newHub
@@ -32,12 +32,18 @@ func (thisHub *hub) addConnection(conn *websocket.Conn) {
 	thisHub.nameMap.changeName(clientId, fmt.Sprintf("User%d", clientId))
 	go func() {
 		for msg := range fromClient {
-			if string(msg[0]) == "/" {
+			text := msg["text"]
+			if string(text[0]) == "/" {
 				thisHub.log(fmt.Sprintf("Client %d has run a command", clientId))
-				thisHub.run_command(clientId, string(msg[1:]))
+				thisHub.run_command(clientId, string(text[1:]))
 				continue
 			}
-			thisHub.msgChan <- fmt.Sprintf("%s: %s", thisHub.nameMap.getName(clientId), msg)
+
+			sendMsg := make(map[string]string)
+			sendMsg["username"] = thisHub.nameMap.getName(clientId)
+			sendMsg["text"] = msg["text"]
+			sendMsg["color"] = msg["color"]
+			thisHub.msgChan <- sendMsg
 		}
 		thisHub.log(fmt.Sprint("Removing Client", clientId))
 		close(thisHub.clientChanMap[clientId])

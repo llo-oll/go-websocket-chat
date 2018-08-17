@@ -10,17 +10,40 @@
         const receivedText = document.getElementById("receivedMessages");
         const sendTextArea = document.getElementById("sendTextArea");
         sendTextArea.value = "";
+        let userColor = "seagreen";
+        sendTextArea.style.color = userColor;
+
+
+        const colorButtonList = document.getElementsByName("colorButtons");
+        colorButtonList.forEach(
+            node => {
+                node.onchange =
+                        () => {
+                            if (node.value) {
+                                userColor = window.getComputedStyle(node).getPropertyValue("background-color");
+                                sendTextArea.style.color = userColor;
+                                sendTextArea.focus();
+                            }
+                        }
+            }
+        );
+
         if (window["WebSocket"]) {
             const conn = new WebSocket("ws://" + document.location.host + "/ws");
 
+            //On receiving a message over the WebSocket, display it on screen
+            //and scroll to display it.
             conn.onmessage = event => {
                 const newMessage = document.createElement("div");
                 newMessage.classList.add("message");
-                newMessage.textContent = event.data;
+                const data = JSON.parse(event.data);
+                newMessage.style.color = data.color;
+                newMessage.textContent = data.username + ": " + data.text;
                 receivedText.appendChild(newMessage);
                 scrollToBottom();
             };
 
+            //On opening a websocket connection, change the status message to read connected.
             conn.onopen = () => {
                 const dissMsg = document.getElementById("disconnected");
                 dissMsg.classList.add("currentHiddenStatus");
@@ -29,6 +52,7 @@
 
             };
 
+            //On closing a WebSocket connection, change the status message to read disconnected.
             conn.onclose = () => {
                 const disMsg = document.getElementById("disconnected");
                 disMsg.classList.remove("currentHiddenStatus");
@@ -36,14 +60,20 @@
                 conMsg.classList.add("currentHiddenStatus");
             };
 
+            //Send message to the server when hitting enter in the text area.
             sendTextArea.onkeyup = event => {
                 if (event.key === "Enter") {
-                    //TODO Does this throw an error sometimes?
-                    conn.send(sendTextArea.value);
+                    const msg = {
+                        "color": userColor,
+                        "text": sendTextArea.value
+                    };
                     sendTextArea.value = "";
+                    //TODO Does this throw an error sometimes?
+                    conn.send(JSON.stringify(msg));
                 }
             };
 
+            //Scroll the received messages area to the bottom.
             function scrollToBottom() {
                 const receivedMsgs = document.getElementById("receivedMessages");
                 receivedMsgs.scrollTo(0, receivedMsgs.scrollHeight);
@@ -72,35 +102,32 @@
         text-align: center;
     }
 
-    #receivedMessages {
-        color: slategray;
+    .textbox {
         background-color: white;
+        border: none;
+        border-radius: 30px;
+        margin-bottom: 10px;
+        padding: 20px;
+    }
+
+    #receivedMessages {
         height: 300px;
         width: 500px;
-        padding: 10px;
-        border-radius: 10px;
-        margin-bottom: 15px;
         overflow: auto;
     }
 
     #sendTextArea {
         width: 500px;
         height: 100px;
-        border-radius: 10px;
-        padding: 10px;
-        border: none;
-        background-color: white;
+        margin: 0;
     }
 
     #connectionStatus {
         width: 250px;
         height: 40px;
-        border-radius: 10px;
-        background-color: white;
-        margin-bottom: 15px;
         font-size: 20px;
         text-align: center;
-        padding:8px;
+        padding: 7px;
     }
     #disconnected {
         color: indianred;
@@ -116,9 +143,43 @@
     
     .message {
         padding: 10px;
-        /*border: 1px solid seagreen;*/
         border-radius: 10px;
         margin-bottom: 5px;
+    }
+
+    fieldset {
+        width: 550px;
+        padding: 8px;
+        border: none;
+    }
+
+    .colorButton {
+        -webkit-appearance: button;
+        -moz-appearance: button;
+        appearance: button;
+
+        width: 70px;
+        height: 70px;
+        border-radius: 100px;
+        margin-left: 0;
+        margin-right: 27px;
+        margin-top: 20px;
+    }
+
+    #color1 {
+        background-color: red;
+    }
+    #color2 {
+        background-color: green;
+    }
+    #color3 {
+        background-color: blue;
+    }
+    #color4 {
+        background-color: deeppink;
+    }
+    #color5 {
+        background-color: yellow;
     }
 
 </style>
@@ -127,10 +188,17 @@
 
 <body>
 
-    <h1>Websocket Chat Client</h1>
-    <div id="connectionStatus"><span id="disconnected">Disconnected</span><span id="connected" class="currentHiddenStatus">Connected</span></div>
-    <div id="receivedMessages"></div>
-    <textarea id="sendTextArea" autofocus></textarea>
+    <h1>Chat</h1>
+    <div id="connectionStatus" class="textbox"><span id="disconnected">Disconnected</span><span id="connected" class="currentHiddenStatus">Connected</span></div>
+    <div id="receivedMessages" class="textbox"></div>
+    <textarea id="sendTextArea" class="textbox" title="message send area" autofocus></textarea>
+    <fieldset id="colorButtonSet" title="Color selection">
+        <input type="radio" id="color1" class="colorButton" name="colorButtons">
+        <input type="radio" id="color2" class="colorButton" name="colorButtons">
+        <input type="radio" id="color3" class="colorButton" name="colorButtons">
+        <input type="radio" id="color4" class="colorButton" name="colorButtons">
+        <input type="radio" id="color5" class="colorButton" name="colorButtons">
+    </fieldset>
 
 </body>
 </html>

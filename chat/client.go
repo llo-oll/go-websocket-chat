@@ -22,8 +22,8 @@ import (
 type client struct {
 	id          int
 	conn        *websocket.Conn
-	receiveChan <-chan string
-	sendChan    chan<- string
+	receiveChan <-chan map[string]string
+	sendChan    chan<- map[string]string
 }
 
 //This channel provides unique ids for clients (0,1,...)
@@ -44,9 +44,9 @@ var idChan = func() <-chan int {
 //conn should be a WebSocket connection to the html client.
 //
 //Returns the id of the new client and channels for sending and receiving messages.
-func newClient(conn *websocket.Conn) (clientId int, toClient chan<- string, fromClient <-chan string) {
-	receiveChan := make(chan string)
-	sendChan := make(chan string)
+func newClient(conn *websocket.Conn) (clientId int, toClient chan<- map[string]string, fromClient <-chan map[string]string) {
+	receiveChan := make(chan map[string]string)
+	sendChan := make(chan map[string]string)
 	id := <-idChan
 	newClient := client{id, conn, receiveChan, sendChan}
 	newClient.run()
@@ -61,9 +61,9 @@ func (thisClient *client) run() {
 //msgReceiveRoutine waits for incoming messages from the hub and then sends them over the WebSocket.
 func (thisClient *client) msgReceiveRoutine() {
 	thisClient.log("Listening for incoming messages")
-	for msg := range thisClient.receiveChan {
+	for mapMsg := range thisClient.receiveChan {
 		thisClient.log("Received a message")
-		err := thisClient.conn.WriteMessage(websocket.TextMessage, []byte(msg))
+		err := thisClient.conn.WriteJSON(mapMsg)
 		if err != nil {
 			thisClient.log(err)
 			thisClient.log("Failed to write to WebSocket")
@@ -79,15 +79,14 @@ func (thisClient *client) msgReceiveRoutine() {
 func (thisClient *client) msgSendRoutine() {
 	thisClient.log("Waiting to send messages")
 	for {
-		msgType, bytes, err := thisClient.conn.ReadMessage()
+		var jsonMsg map[string]string
+		err := thisClient.conn.ReadJSON(&jsonMsg)
 		if err != nil {
 			thisClient.log(err)
 			break
-		} else if msgType != websocket.TextMessage {
-			thisClient.log("Received non-text message through socket")
 		} else {
 			thisClient.log("Sending message")
-			thisClient.sendChan <- string(bytes)
+			thisClient.sendChan <- jsonMsg
 		}
 	}
 	thisClient.log("Stopped sending messages")
