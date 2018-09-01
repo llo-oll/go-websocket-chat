@@ -1,5 +1,4 @@
-# A simple chat system
-Chats in go.
+# Chats in go.
 
 ## Function
 1. Open the webpage to get into n-way chat.
