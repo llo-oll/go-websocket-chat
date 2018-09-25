@@ -9,7 +9,7 @@ import (
 //This is the hub which connects all the chat clients together, and coordinates the passing around of messages.
 var chatHub = newHub()
 
-//main sets up a server providing a web based chat client on "/"
+//main sets up a server providing a web based chat webSocketAdapter on "/"
 func main() {
 	http.HandleFunc("/", servePage)
 	http.HandleFunc("/ws", connectClient)
@@ -39,7 +39,7 @@ func connectClient(writer http.ResponseWriter, request *http.Request) {
 
 }
 
-//servePage is an http request handler which serves the webchat web page to a client.
+//servePage is an http request handler which serves the webchat web page to a webSocketAdapter.
 func servePage(writer http.ResponseWriter, request *http.Request) {
-	http.ServeFile(writer, request, "chat/client.html")
+	http.ServeFile(writer, request, "chat/webSocketAdapter.html")
 }

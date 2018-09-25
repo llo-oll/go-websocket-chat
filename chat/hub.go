@@ -15,7 +15,7 @@ type hub struct {
 	nameMap       usernameMap
 }
 
-//TODO maybe refactor hub and client into a separate package and turn this into a public function. This will force the use of this constructor due to the "hub" type being private.
+//TODO maybe refactor hub and webSocketAdapter into a separate package and turn this into a public function. This will force the use of this constructor due to the "hub" type being private.
 
 func newHub() *hub {
 	newHub := &hub{msgChan: make(chan map[string]string), clientChanMap: make(map[int]chan<- map[string]string), nameMap: newUsernameMap()}
@@ -26,8 +26,8 @@ func newHub() *hub {
 
 func (thisHub *hub) addConnection(conn *websocket.Conn) {
 	thisHub.log("Received new connection")
-	thisHub.log("Creating new client")
-	clientId, toClient, fromClient := newClient(conn)
+	thisHub.log("Creating new webSocketAdapter")
+	clientId, toClient, fromClient := newWebSocketAdapter(conn)
 	thisHub.clientChanMap[clientId] = toClient
 	thisHub.nameMap.changeName(clientId, fmt.Sprintf("User%d", clientId))
 	go func() {
@@ -48,7 +48,7 @@ func (thisHub *hub) addConnection(conn *websocket.Conn) {
 		thisHub.log(fmt.Sprint("Removing Client", clientId))
 		close(thisHub.clientChanMap[clientId])
 		delete(thisHub.clientChanMap, clientId)
-		//removes the client from nameMap
+		//removes the webSocketAdapter from nameMap
 		thisHub.nameMap.changeName(clientId, "")
 		thisHub.log(fmt.Sprintf("%s", thisHub.nameMap))
 	}()
@@ -56,10 +56,10 @@ func (thisHub *hub) addConnection(conn *websocket.Conn) {
 
 //listenAndSend listens for incoming messages and sends them out to all clients.
 func (thisHub *hub) listenAndSend() {
-	thisHub.log("Listening for client messages")
+	thisHub.log("Listening for webSocketAdapter messages")
 	for msg := range thisHub.msgChan {
 		for id, ch := range thisHub.clientChanMap {
-			thisHub.log(fmt.Sprintf("Sending message to client %d", id))
+			thisHub.log(fmt.Sprintf("Sending message to webSocketAdapter %d", id))
 			ch <- msg
 		}
 	}
@@ -92,7 +92,7 @@ func newUsernameMap() usernameMap {
 	return nameMap
 }
 
-//changeName changes the username of the client if the new name isn't already in use.
+//changeName changes the username of the webSocketAdapter if the new name isn't already in use.
 //returns true if successful, false otherwise.
 //Changing a name to the empty string removes the entry from the map.
 //
