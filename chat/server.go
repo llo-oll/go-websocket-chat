@@ -41,5 +41,5 @@ func connectClient(writer http.ResponseWriter, request *http.Request) {
 
 //servePage is an http request handler which serves the webchat web page to a webSocketAdapter.
 func servePage(writer http.ResponseWriter, request *http.Request) {
-	http.ServeFile(writer, request, "chat/webSocketAdapter.html")
+	http.ServeFile(writer, request, "chat/client.html")
 }
